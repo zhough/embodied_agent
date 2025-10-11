@@ -141,6 +141,7 @@ def train():
     episode_losses = []   # 记录每回合平均损失
     total_steps = 0       # 记录总步数
     episode_count = 0     # 记录回合数
+    last_target_update = 0
 
     # --- 主训练循环（按总步数） ---
     while total_steps < NUM_STEPS:
@@ -213,11 +214,13 @@ def train():
                 break
 
         # --- 更新目标网络 ---
-        if total_steps % TARGET_UPDATE == 0:
+        if (total_steps - last_target_update) > TARGET_UPDATE == 0:
+            last_target_update = total_steps
+            print('更新target_net')
             target_net.load_state_dict(policy_net.state_dict())
             # 可视化新增：记录目标网络更新（TensorBoard）
             #writer.add_scalar('Training/Target_Network_Update', total_steps, total_steps)
-            swanlab.log({"train/Target_Network_Update":total_steps}, step=total_steps)
+            #swanlab.log({"train/Target_Network_Update":total_steps}, step=total_steps)
             #保存模型参数
             import os
             save_dir = "models"
