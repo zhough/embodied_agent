@@ -89,17 +89,19 @@ def select_action(state, steps_done, policy_net, env):
 
 # --- 优化模型 ---
 def optimize_model(policy_net, target_net, memory, optimizer, loss_fn):
-    if len(memory) < BATCH_SIZE: return 0.0
+    if len(memory) < BATCH_SIZE: 
+        return 0.0
     transitions = memory.sample(BATCH_SIZE)
     batch = Transition(*zip(*transitions))
-    non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)), dtype=torch.bool)
+    non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)), dtype=torch.bool).to(DEVICE)
     non_final_next_states = torch.cat([s for s in batch.next_state if s is not None])
     state_batch = torch.cat(batch.state)
     action_batch = torch.cat(batch.action)
     reward_batch = torch.cat(batch.reward)
     state_action_values = policy_net(state_batch).gather(1, action_batch)
-    next_state_values = torch.zeros(BATCH_SIZE)
-    with torch.no_grad(): next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0]
+    next_state_values = torch.zeros(BATCH_SIZE).to(DEVICE)
+    with torch.no_grad(): 
+        next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0]
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch
     loss = loss_fn(state_action_values, expected_state_action_values.unsqueeze(1))
     optimizer.zero_grad()
