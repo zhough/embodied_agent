@@ -11,6 +11,7 @@ import gymnasium as gym
 import ale_py
 import shimmy  # 导入以确保包装器注册
 import swanlab
+import os
 
 gym.register_envs(ale_py)
 # --- 超参数 ---
@@ -21,7 +22,7 @@ EPS_END = 0.1
 EPS_DECAY = 50000  # 训练步数更多，衰减更慢
 LR = 1e-3  
 MEMORY_SIZE = 500000  # 需要更大的经验回放池
-TARGET_UPDATE = 2000  # 通常按步数更新，而不是按回合
+TARGET_UPDATE = 4000  # 通常按步数更新，而不是按回合
 NUM_STEPS = 100000  # 训练总步数
 FRAME_SIZE = 4
 PRINT_INTERVAL = 5  
@@ -141,7 +142,7 @@ def train():
     episode_losses = []   # 记录每回合平均损失
     total_steps = 0       # 记录总步数
     episode_count = 0     # 记录回合数
-    last_target_update = 0
+    #last_target_update = 0
 
     # --- 主训练循环（按总步数） ---
     while total_steps < NUM_STEPS:
@@ -213,35 +214,34 @@ def train():
 
                 break
 
-        # --- 更新目标网络 ---
-        if (total_steps - last_target_update) > TARGET_UPDATE == 0:
-            last_target_update = total_steps
-            print('更新target_net')
-            target_net.load_state_dict(policy_net.state_dict())
-            # 可视化新增：记录目标网络更新（TensorBoard）
-            #writer.add_scalar('Training/Target_Network_Update', total_steps, total_steps)
-            #swanlab.log({"train/Target_Network_Update":total_steps}, step=total_steps)
-            #保存模型参数
-            import os
-            save_dir = "models"
-            if not os.path.exists(save_dir):
-                os.makedirs(save_dir)
-            
-            # 保存模型权重（核心）
-            # model_save_path = os.path.join(save_dir, "policy_net_final.pt")
-            # torch.save(policy_net.state_dict(), model_save_path)
-            # print(f"最终模型权重保存路径：{model_save_path}")
-            
-            # （可选）保存完整训练状态（断点续训用）
-            checkpoint_save_path = os.path.join(save_dir, "training_checkpoint_final.pt")
-            torch.save({
-                "policy_net_state_dict": policy_net.state_dict(),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "total_steps": total_steps,
-                "episode_count": episode_count,
-                "eps_threshold": eps_threshold
-            }, checkpoint_save_path)
-            print(f"完整训练状态保存路径：{checkpoint_save_path}")
+            # --- 更新目标网络 ---
+            if total_steps % TARGET_UPDATE == 0:
+                print('更新target_net')
+                target_net.load_state_dict(policy_net.state_dict())
+                # 可视化新增：记录目标网络更新（TensorBoard）
+                #writer.add_scalar('Training/Target_Network_Update', total_steps, total_steps)
+                #swanlab.log({"train/Target_Network_Update":total_steps}, step=total_steps)
+                #保存模型参数
+                
+                save_dir = "models"
+                if not os.path.exists(save_dir):
+                    os.makedirs(save_dir)
+                
+                # 保存模型权重（核心）
+                # model_save_path = os.path.join(save_dir, "policy_net_final.pt")
+                # torch.save(policy_net.state_dict(), model_save_path)
+                # print(f"最终模型权重保存路径：{model_save_path}")
+                
+                # （可选）保存完整训练状态（断点续训用）
+                checkpoint_save_path = os.path.join(save_dir, "training_checkpoint_final.pt")
+                torch.save({
+                    "policy_net_state_dict": policy_net.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "total_steps": total_steps,
+                    "episode_count": episode_count,
+                    "eps_threshold": eps_threshold
+                }, checkpoint_save_path)
+                print(f"完整训练状态保存路径：{checkpoint_save_path}")
 
     env.close()
     print("训练结束！")
