@@ -14,7 +14,7 @@ import swanlab
 
 gym.register_envs(ale_py)  # 显式注册 ALE（在 0.29.1 中必要）
 # --- 超参数 ---
-BATCH_SIZE = 1024
+BATCH_SIZE = 8192
 GAMMA = 0.99
 EPS_START = 1.0
 EPS_END = 0.1
@@ -30,11 +30,11 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class DQN(nn.Module):
     def __init__(self,n_act):
         super().__init__()
-        self.conv1 = nn.Conv2d(FRAME_SIZE,32,8,4)
-        self.conv2 = nn.Conv2d(32,64,4,2)
-        self.conv3 = nn.Conv2d(64,64,3,1)
+        self.conv1 = nn.Conv2d(FRAME_SIZE,64,8,4)
+        self.conv2 = nn.Conv2d(64,128,4,2)
+        self.conv3 = nn.Conv2d(128,256,3,1)
         
-        self.fc1 = nn.Linear(64*7*7,512)
+        self.fc1 = nn.Linear(256*7*7,512)
         self.fc2 = nn.Linear(512,n_act)
 
     def forward(self,x):
