@@ -12,17 +12,17 @@ import ale_py
 import shimmy  # 导入以确保包装器注册
 import swanlab
 
-gym.register_envs(ale_py)  # 显式注册 ALE（在 0.29.1 中必要）
+gym.register_envs(ale_py)
 # --- 超参数 ---
 BATCH_SIZE = 8192
 GAMMA = 0.99
 EPS_START = 1.0
 EPS_END = 0.1
 EPS_DECAY = 100000  # 训练步数更多，衰减更慢
-LR = 1e-3  # CNN通常需要更小的学习率
+LR = 1e-3  
 MEMORY_SIZE = 1000000  # 需要更大的经验回放池
 TARGET_UPDATE = 10000  # 通常按步数更新，而不是按回合
-NUM_STEPS = 5000000  # 训练总步数
+NUM_STEPS = 100000  # 训练总步数
 FRAME_SIZE = 4
 PRINT_INTERVAL = 10  
 LOG_INTERVAL = 1  
