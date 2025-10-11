@@ -119,7 +119,7 @@ def train():
     n_actions = env.action_space.n
     policy_net = DQN(n_actions).to(DEVICE)
     target_net = DQN(n_actions).to(DEVICE)
-    target_net.load_state_dict(policy_net.state_dict()).to(DEVICE)
+    target_net.load_state_dict(policy_net.state_dict())
     target_net.eval()
 
     optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
