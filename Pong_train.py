@@ -82,8 +82,10 @@ def select_action(state, steps_done, policy_net, env):
     sample = random.random()
     eps_threshold = EPS_END + (EPS_START - EPS_END) * np.exp(-1. * steps_done / EPS_DECAY)
     if sample > eps_threshold:
-        with torch.no_grad(): return policy_net(state).max(1)[1].view(1, 1)
-    else: return torch.tensor([[env.action_space.sample()]], dtype=torch.long)
+        with torch.no_grad(): 
+            return policy_net(state).max(1)[1].view(1, 1).to(DEVICE)
+    else: 
+        return torch.tensor([[env.action_space.sample()]], dtype=torch.long).to(DEVICE)
 
 # --- 优化模型 ---
 def optimize_model(policy_net, target_net, memory, optimizer, loss_fn):
