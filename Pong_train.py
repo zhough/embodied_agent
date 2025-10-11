@@ -18,23 +18,23 @@ BATCH_SIZE = 8192
 GAMMA = 0.99
 EPS_START = 1.0
 EPS_END = 0.1
-EPS_DECAY = 100000  # 训练步数更多，衰减更慢
+EPS_DECAY = 50000  # 训练步数更多，衰减更慢
 LR = 1e-3  
-MEMORY_SIZE = 1000000  # 需要更大的经验回放池
-TARGET_UPDATE = 10000  # 通常按步数更新，而不是按回合
+MEMORY_SIZE = 500000  # 需要更大的经验回放池
+TARGET_UPDATE = 2000  # 通常按步数更新，而不是按回合
 NUM_STEPS = 100000  # 训练总步数
 FRAME_SIZE = 4
-PRINT_INTERVAL = 10  
+PRINT_INTERVAL = 5  
 LOG_INTERVAL = 1  
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class DQN(nn.Module):
     def __init__(self,n_act):
         super().__init__()
-        self.conv1 = nn.Conv2d(FRAME_SIZE,64,8,4)
-        self.conv2 = nn.Conv2d(64,128,4,2)
-        self.conv3 = nn.Conv2d(128,256,3,1)
+        self.conv1 = nn.Conv2d(FRAME_SIZE,32,8,4)
+        self.conv2 = nn.Conv2d(32,64,4,2)
+        self.conv3 = nn.Conv2d(64,128,3,1)
         
-        self.fc1 = nn.Linear(256*7*7,512)
+        self.fc1 = nn.Linear(128*7*7,512)
         self.fc2 = nn.Linear(512,n_act)
 
     def forward(self,x):
@@ -218,27 +218,27 @@ def train():
             # 可视化新增：记录目标网络更新（TensorBoard）
             #writer.add_scalar('Training/Target_Network_Update', total_steps, total_steps)
             swanlab.log({"train/Target_Network_Update":total_steps}, step=total_steps)
-        #保存模型参数
-        import os
-        save_dir = "models"
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
-        
-        # 保存模型权重（核心）
-        model_save_path = os.path.join(save_dir, "policy_net_final.pt")
-        torch.save(policy_net.state_dict(), model_save_path)
-        print(f"最终模型权重保存路径：{model_save_path}")
-        
-        # （可选）保存完整训练状态（断点续训用）
-        checkpoint_save_path = os.path.join(save_dir, "training_checkpoint_final.pt")
-        torch.save({
-            "policy_net_state_dict": policy_net.state_dict(),
-            "optimizer_state_dict": optimizer.state_dict(),
-            "total_steps": total_steps,
-            "episode_count": episode_count,
-            "eps_threshold": eps_threshold
-        }, checkpoint_save_path)
-        print(f"完整训练状态保存路径：{checkpoint_save_path}")
+            #保存模型参数
+            import os
+            save_dir = "models"
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+            
+            # 保存模型权重（核心）
+            # model_save_path = os.path.join(save_dir, "policy_net_final.pt")
+            # torch.save(policy_net.state_dict(), model_save_path)
+            # print(f"最终模型权重保存路径：{model_save_path}")
+            
+            # （可选）保存完整训练状态（断点续训用）
+            checkpoint_save_path = os.path.join(save_dir, "training_checkpoint_final.pt")
+            torch.save({
+                "policy_net_state_dict": policy_net.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "total_steps": total_steps,
+                "episode_count": episode_count,
+                "eps_threshold": eps_threshold
+            }, checkpoint_save_path)
+            print(f"完整训练状态保存路径：{checkpoint_save_path}")
 
     env.close()
     print("训练结束！")
