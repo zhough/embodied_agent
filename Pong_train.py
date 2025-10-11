@@ -218,26 +218,27 @@ def train():
             # 可视化新增：记录目标网络更新（TensorBoard）
             #writer.add_scalar('Training/Target_Network_Update', total_steps, total_steps)
             swanlab.log({"train/Target_Network_Update":total_steps}, step=total_steps)
-    import os
-    save_dir = "models"
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-    
-    # 保存模型权重（核心）
-    model_save_path = os.path.join(save_dir, "policy_net_final.pt")
-    torch.save(policy_net.state_dict(), model_save_path)
-    print(f"最终模型权重保存路径：{model_save_path}")
-    
-    # （可选）保存完整训练状态（断点续训用）
-    checkpoint_save_path = os.path.join(save_dir, "training_checkpoint_final.pt")
-    torch.save({
-        "policy_net_state_dict": policy_net.state_dict(),
-        "optimizer_state_dict": optimizer.state_dict(),
-        "total_steps": total_steps,
-        "episode_count": episode_count,
-        "eps_threshold": eps_threshold
-    }, checkpoint_save_path)
-    print(f"完整训练状态保存路径：{checkpoint_save_path}")
+        #保存模型参数
+        import os
+        save_dir = "models"
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        
+        # 保存模型权重（核心）
+        model_save_path = os.path.join(save_dir, "policy_net_final.pt")
+        torch.save(policy_net.state_dict(), model_save_path)
+        print(f"最终模型权重保存路径：{model_save_path}")
+        
+        # （可选）保存完整训练状态（断点续训用）
+        checkpoint_save_path = os.path.join(save_dir, "training_checkpoint_final.pt")
+        torch.save({
+            "policy_net_state_dict": policy_net.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "total_steps": total_steps,
+            "episode_count": episode_count,
+            "eps_threshold": eps_threshold
+        }, checkpoint_save_path)
+        print(f"完整训练状态保存路径：{checkpoint_save_path}")
 
     env.close()
     print("训练结束！")
