@@ -15,15 +15,16 @@ import os
 
 gym.register_envs(ale_py)
 # --- 超参数 ---
-BATCH_SIZE = 8192
+BATCH_SIZE = 512
+#BATCH_SIZE = 512
 GAMMA = 0.99
 EPS_START = 1.0
 EPS_END = 0.15
 EPS_DECAY = 100000
 LR = 1e-4  
-MEMORY_SIZE = 100000  # 经验回放池
+MEMORY_SIZE = 200000  # 经验回放池
 TARGET_UPDATE = 1000  # 通常按步数更新，而不是按回合
-NUM_STEPS = 200000  # 训练总步数
+NUM_STEPS = 400000  # 训练总步数
 FRAME_SIZE = 4
 PRINT_INTERVAL = 5  
 LOG_INTERVAL = 1  
@@ -31,9 +32,9 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class DQN(nn.Module):
     def __init__(self,n_act):
         super().__init__()
-        self.conv1 = nn.Conv2d(FRAME_SIZE,32,8,4)
-        self.conv2 = nn.Conv2d(32,64,4,2)
-        self.conv3 = nn.Conv2d(64,64,3,1)
+        self.conv1 = nn.Conv2d(FRAME_SIZE,64,8,4)
+        self.conv2 = nn.Conv2d(64,128,4,2)
+        self.conv3 = nn.Conv2d(128,64,3,1)
         
         self.fc1 = nn.Linear(64*7*7,512)
         self.fc2 = nn.Linear(512,n_act)
@@ -70,6 +71,24 @@ class FrameStacker:
         self.stack.append(new_frame)
         return np.concatenate(self.stack, axis=0)  # 输出：(4,84,84)
     
+class FrameProcessor:
+    def __init__(self):
+        self.prev_frame = None  # 记录上一帧，用于计算帧差
+    
+    def process(self, frame):
+        # 第一步：RGB转灰度
+        gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        # 第二步： resize到84x84（Atari标准尺寸）
+        resized = cv2.resize(gray, (84, 84), interpolation=cv2.INTER_AREA)
+        # 第三步：帧差处理（当前帧 - 上一帧，突出运动信息）
+        if self.prev_frame is not None:
+            frame_diff = resized - self.prev_frame
+        else:
+            frame_diff = np.zeros_like(resized)  # 第一帧无历史，用全0帧差
+        self.prev_frame = resized  # 更新上一帧
+        # 第四步：归一化到[0,1]（帧差可能有负数值，先取绝对值再归一化）
+        normalized = np.abs(frame_diff) / 255.0
+        return normalized[np.newaxis, ...]  # 返回(1,84,84)的格式，方便后续堆叠
 # --- 经验回放 ---
 Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward'))
 class ReplayMemory(object):
@@ -119,7 +138,7 @@ def train():
         project='Breakout_DQN',
         experiment_name="train",
     )
-    # --- 初始化 ---
+    # --- 初始化 ---,render_mode="human"
     env = gym.make("ALE/Breakout-v5")
     n_actions = env.action_space.n
     policy_net = DQN(n_actions).to(DEVICE)
@@ -130,7 +149,7 @@ def train():
     optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
     memory = ReplayMemory(MEMORY_SIZE)
     frame_stacker = FrameStacker(stack_size=4)
-
+    frame_processor = FrameProcessor()
     # checkpoint = torch.load("models/training_checkpoint_final.pt", map_location=DEVICE)
     # policy_net.load_state_dict(checkpoint["policy_net_state_dict"])
     # optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
@@ -153,7 +172,10 @@ def train():
 
         # --- 新回合初始化 ---
         frame, info = env.reset()
-        processed_frame = preprocess_frame(frame)
+        frame_processor.prev_frame = None
+        #processed_frame = preprocess_frame(frame)
+        #替换
+        processed_frame = frame_processor.process(frame)
         state = frame_stacker.reset(processed_frame)
         state = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(DEVICE)
 
@@ -170,7 +192,9 @@ def train():
             done = terminated or truncated
 
             # --- 预处理下一帧 ---
-            processed_next_frame = preprocess_frame(next_frame)
+            #processed_next_frame = preprocess_frame(next_frame)
+            #替换
+            processed_next_frame = frame_processor.process(next_frame)
             next_state_stacked = frame_stacker.step(processed_next_frame)
             next_state = torch.tensor(next_state_stacked, dtype=torch.float32).unsqueeze(0).to(DEVICE) if not terminated else None
 
