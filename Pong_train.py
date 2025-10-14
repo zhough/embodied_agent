@@ -210,7 +210,7 @@ def train():
                     avg_loss = np.mean(episode_losses[-PRINT_INTERVAL:])    # 最近10回合平均损失
                     print(f"=== Episode {episode_count:5d} | Total Steps {total_steps:7d} ===")
                     print(f"Epsilon: {eps_threshold:.4f} | Avg Reward: {avg_reward:.2f} | Avg Loss: {avg_loss:.4f}")
-                    print(f"Memory Size: {len(memory):7d} | Target Update: {total_steps % TARGET_UPDATE:5d}\n")
+                    print(f"Memory Size: {len(memory):7d} | Target Update: {total_steps // TARGET_UPDATE:5d}\n")
 
                 break
 
