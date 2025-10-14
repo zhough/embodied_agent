@@ -33,9 +33,9 @@ class DQN(nn.Module):
         super().__init__()
         self.conv1 = nn.Conv2d(FRAME_SIZE,32,8,4)
         self.conv2 = nn.Conv2d(32,64,4,2)
-        self.conv3 = nn.Conv2d(64,128,3,1)
+        self.conv3 = nn.Conv2d(64,64,3,1)
         
-        self.fc1 = nn.Linear(128*7*7,512)
+        self.fc1 = nn.Linear(64*7*7,512)
         self.fc2 = nn.Linear(512,n_act)
 
     def forward(self,x):
@@ -44,7 +44,7 @@ class DQN(nn.Module):
         x = F.relu(self.conv3(x))
         x = x.reshape(x.size(0),-1)
         x = F.relu(self.fc1(x))
-        x = self.fc2(x) #输出可以是任意数(不一定非负)
+        x = self.fc2(x)
         return x
     
 def preprocess_frame(frame):
@@ -116,11 +116,11 @@ def train():
     print(f'开始训练,设备:{DEVICE}')
     swanlab.login(api_key="Nj75sPpgjdzUONcpKxlg6")
     swanlab.init(
-        project='Pong_DQN',
+        project='Breakout_DQN',
         experiment_name="train",
     )
     # --- 初始化 ---
-    env = gym.make("ALE/Pong-v5")
+    env = gym.make("ALE/Breakout-v5")
     n_actions = env.action_space.n
     policy_net = DQN(n_actions).to(DEVICE)
     target_net = DQN(n_actions).to(DEVICE)
