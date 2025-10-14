@@ -18,12 +18,12 @@ gym.register_envs(ale_py)
 BATCH_SIZE = 8192
 GAMMA = 0.99
 EPS_START = 1.0
-EPS_END = 0.1
+EPS_END = 0.15
 EPS_DECAY = 100000
-LR = 3e-5  
-MEMORY_SIZE = 50000  # 经验回放池
+LR = 1e-4  
+MEMORY_SIZE = 100000  # 经验回放池
 TARGET_UPDATE = 2000  # 通常按步数更新，而不是按回合
-NUM_STEPS = 100000  # 训练总步数
+NUM_STEPS = 200000  # 训练总步数
 FRAME_SIZE = 4
 PRINT_INTERVAL = 5  
 LOG_INTERVAL = 1  
