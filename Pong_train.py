@@ -21,9 +21,9 @@ GAMMA = 0.99
 EPS_START = 1.0
 EPS_END = 0.15
 EPS_DECAY = 100000
-LR = 1e-4  
+LR = 2e-4  
 MEMORY_SIZE = 200000  # 经验回放池
-TARGET_UPDATE = 1000  # 通常按步数更新，而不是按回合
+TARGET_UPDATE = 2100  # 通常按步数更新，而不是按回合
 NUM_STEPS = 400000  # 训练总步数
 FRAME_SIZE = 4
 PRINT_INTERVAL = 5  
@@ -108,7 +108,7 @@ def select_action(state, steps_done, policy_net, env):
         return torch.tensor([[env.action_space.sample()]], dtype=torch.long).to(DEVICE)
 
 # --- 优化模型 ---
-def optimize_model(policy_net, target_net, memory, optimizer, loss_fn):
+def optimize_model(policy_net, target_net, memory, optimizer, loss_fn,total_steps):
     if len(memory) < BATCH_SIZE: 
         return 0.0
     transitions = memory.sample(BATCH_SIZE)
@@ -123,7 +123,18 @@ def optimize_model(policy_net, target_net, memory, optimizer, loss_fn):
     with torch.no_grad(): 
         next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0]
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch
+    # 每500步打印一次，避免输出过多；用with torch.no_grad()避免额外梯度计算
+    # if total_steps % 500 == 0:
+    #     with torch.no_grad():
+    #         print(f"\n=== 第{total_steps}步 Q值信息 ===")
+    #         # 预测Q值统计
+    #         print(f"预测Q值：均值={state_action_values.mean().item():.6f} | 最大值={state_action_values.max().item():.6f} | 最小值={state_action_values.min().item():.6f}")
+    #         # 目标Q值统计（注意目标Q值是(BATCH_SIZE,)，需要unsqueeze(1)和预测Q值形状对齐）
+    #         print(f"目标Q值：均值={expected_state_action_values.unsqueeze(1).mean().item():.6f} | 最大值={expected_state_action_values.unsqueeze(1).max().item():.6f} | 最小值={expected_state_action_values.unsqueeze(1).min().item():.6f}")
+    # -----------------------------------------------------------------------
+
     loss = loss_fn(state_action_values, expected_state_action_values.unsqueeze(1))
+
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
@@ -197,10 +208,16 @@ def train():
             processed_next_frame = frame_processor.process(next_frame)
             next_state_stacked = frame_stacker.step(processed_next_frame)
             next_state = torch.tensor(next_state_stacked, dtype=torch.float32).unsqueeze(0).to(DEVICE) if not terminated else None
+            # if total_steps % 100 == 0:
+            #     print(f"\n=== 第{total_steps}步帧处理信息 ===")
+            #     print(f"处理后帧的形状：{processed_next_frame.shape}")  # 应输出(1,84,84)
+            #     print(f"处理后帧的最大值：{processed_next_frame.max():.6f}")  # 正常应>0（运动区域）
+            #     print(f"处理后帧的最小值：{processed_next_frame.min():.6f}")  # 正常应=0（静态区域）
+            #     print(f"处理后帧的平均值：{processed_next_frame.mean():.6f}")  # 正常应在0.05~0.3之间
 
             # --- 存储经验 & 优化模型 ---
             memory.push(state, action, next_state, reward)
-            loss = optimize_model(policy_net, target_net, memory, optimizer, nn.MSELoss())  # 可视化新增：获取损失值
+            loss = optimize_model(policy_net, target_net, memory, optimizer, nn.MSELoss(),total_steps)  # 可视化新增：获取损失值
             if loss > 0:  # 可视化新增：只累加有效损失（避免未优化时的0）
                 current_episode_loss += loss
                 optimize_count += 1
