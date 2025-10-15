@@ -20,10 +20,10 @@ BATCH_SIZE = 512
 GAMMA = 0.99
 EPS_START = 1.0
 EPS_END = 0.15
-EPS_DECAY = 100000
-LR = 2e-4  
+EPS_DECAY = 150000
+LR = 3e-4  
 MEMORY_SIZE = 200000  # 经验回放池
-TARGET_UPDATE = 2100  # 通常按步数更新，而不是按回合
+TARGET_UPDATE = 4000  # 通常按步数更新，而不是按回合
 NUM_STEPS = 400000  # 训练总步数
 FRAME_SIZE = 4
 PRINT_INTERVAL = 5  
@@ -99,13 +99,14 @@ class ReplayMemory(object):
 
 # --- 动作选择 ---
 def select_action(state, steps_done, policy_net, env):
+    state = state.to(DEVICE)
     sample = random.random()
     eps_threshold = EPS_END + (EPS_START - EPS_END) * np.exp(-1. * steps_done / EPS_DECAY)
     if sample > eps_threshold:
         with torch.no_grad(): 
-            return policy_net(state).max(1)[1].view(1, 1).to(DEVICE)
+            return policy_net(state).max(1)[1].view(1, 1).cpu()
     else: 
-        return torch.tensor([[env.action_space.sample()]], dtype=torch.long).to(DEVICE)
+        return torch.tensor([[env.action_space.sample()]], dtype=torch.long)
 
 # --- 优化模型 ---
 def optimize_model(policy_net, target_net, memory, optimizer, loss_fn,total_steps):
@@ -114,10 +115,10 @@ def optimize_model(policy_net, target_net, memory, optimizer, loss_fn,total_step
     transitions = memory.sample(BATCH_SIZE)
     batch = Transition(*zip(*transitions))
     non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)), dtype=torch.bool).to(DEVICE)
-    non_final_next_states = torch.cat([s for s in batch.next_state if s is not None])
-    state_batch = torch.cat(batch.state)
-    action_batch = torch.cat(batch.action)
-    reward_batch = torch.cat(batch.reward)
+    non_final_next_states = torch.cat([s for s in batch.next_state if s is not None]).to(DEVICE)
+    state_batch = torch.cat(batch.state).to(DEVICE)
+    action_batch = torch.cat(batch.action).to(DEVICE)
+    reward_batch = torch.cat(batch.reward).to(DEVICE)
     state_action_values = policy_net(state_batch).gather(1, action_batch)
     next_state_values = torch.zeros(BATCH_SIZE).to(DEVICE)
     with torch.no_grad(): 
@@ -188,7 +189,7 @@ def train():
         #替换
         processed_frame = frame_processor.process(frame)
         state = frame_stacker.reset(processed_frame)
-        state = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(DEVICE)
+        state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
 
         while True:
             # --- 选择动作 & 计算探索率 ---
@@ -199,7 +200,7 @@ def train():
             # --- 执行动作 ---
             next_frame, reward, terminated, truncated, _ = env.step(action.item())
             current_episode_reward += reward  # 可视化新增：累加回合得分
-            reward = torch.tensor([reward], dtype=torch.float32).to(DEVICE)
+            reward = torch.tensor([reward], dtype=torch.float32)
             done = terminated or truncated
 
             # --- 预处理下一帧 ---
@@ -207,7 +208,7 @@ def train():
             #替换
             processed_next_frame = frame_processor.process(next_frame)
             next_state_stacked = frame_stacker.step(processed_next_frame)
-            next_state = torch.tensor(next_state_stacked, dtype=torch.float32).unsqueeze(0).to(DEVICE) if not terminated else None
+            next_state = torch.tensor(next_state_stacked, dtype=torch.float32).unsqueeze(0) if not terminated else None
             # if total_steps % 100 == 0:
             #     print(f"\n=== 第{total_steps}步帧处理信息 ===")
             #     print(f"处理后帧的形状：{processed_next_frame.shape}")  # 应输出(1,84,84)
@@ -258,6 +259,7 @@ def train():
             # --- 更新目标网络 ---
             if total_steps % TARGET_UPDATE == 0:
                 print('更新target_net')
+                torch.cuda.empty_cache()
                 target_net.load_state_dict(policy_net.state_dict())
                 # 可视化新增：记录目标网络更新（TensorBoard）
                 #writer.add_scalar('Training/Target_Network_Update', total_steps, total_steps)
