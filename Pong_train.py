@@ -12,19 +12,21 @@ import ale_py
 import shimmy  # 导入以确保包装器注册
 import swanlab
 import os
-
+from gymnasium.wrappers import MaxAndSkipObservation
+#import minatar
 gym.register_envs(ale_py)
 # --- 超参数 ---
+SWANLAB_FLAG = True
 BATCH_SIZE = 512
 #BATCH_SIZE = 512
 GAMMA = 0.99
 EPS_START = 1.0
-EPS_END = 0.15
-EPS_DECAY = 150000
-LR = 3e-4  
+EPS_END = 0.10
+EPS_DECAY = 100000
+LR = 4e-4  
 MEMORY_SIZE = 200000  # 经验回放池
-TARGET_UPDATE = 4000  # 通常按步数更新，而不是按回合
-NUM_STEPS = 400000  # 训练总步数
+TARGET_UPDATE = 3500  # 通常按步数更新，而不是按回合
+NUM_STEPS = 200000  # 训练总步数
 FRAME_SIZE = 4
 PRINT_INTERVAL = 5  
 LOG_INTERVAL = 1  
@@ -145,13 +147,15 @@ def train():
     # 可视化新增：初始化TensorBoard写入器（日志保存在"runs/Pong_DQN"目录）
     #writer = SummaryWriter(log_dir="runs/Pong_DQN")
     print(f'开始训练,设备:{DEVICE}')
-    swanlab.login(api_key="Nj75sPpgjdzUONcpKxlg6")
-    swanlab.init(
-        project='Breakout_DQN',
-        experiment_name="train",
-    )
+    if SWANLAB_FLAG:
+        swanlab.login(api_key="Nj75sPpgjdzUONcpKxlg6")
+        swanlab.init(
+            project='Pong_DQN',
+            experiment_name="train",
+        )
     # --- 初始化 ---,render_mode="human"
-    env = gym.make("ALE/Breakout-v5")
+    env = gym.make("ALE/Pong-v5")
+    env = MaxAndSkipObservation(env,4)
     n_actions = env.action_space.n
     policy_net = DQN(n_actions).to(DEVICE)
     target_net = DQN(n_actions).to(DEVICE)
@@ -162,18 +166,18 @@ def train():
     memory = ReplayMemory(MEMORY_SIZE)
     frame_stacker = FrameStacker(stack_size=4)
     frame_processor = FrameProcessor()
+
+    # 可视化新增：初始化统计变量
+    episode_rewards = []  # 记录每回合得分
+    episode_losses = []   # 记录每回合平均损失
+    total_steps = 0       # 记录总步数
+    episode_count = 0     # 记录回合数
     # checkpoint = torch.load("models/training_checkpoint_final.pt", map_location=DEVICE)
     # policy_net.load_state_dict(checkpoint["policy_net_state_dict"])
     # optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     # total_steps = checkpoint["total_steps"]  # 恢复总步数
     # episode_count = checkpoint["episode_count"]  # 恢复回合数
     # eps_threshold = checkpoint["eps_threshold"]  # 恢复探索率
-    # 可视化新增：初始化统计变量
-    episode_rewards = []  # 记录每回合得分
-    episode_losses = []   # 记录每回合平均损失
-    total_steps = 0       # 记录总步数
-    episode_count = 0     # 记录回合数
-    #last_target_update = 0
 
     # --- 主训练循环（按总步数） ---
     while total_steps < NUM_STEPS:
@@ -228,7 +232,8 @@ def train():
 
             # --- 可视化新增：每步记录探索率（TensorBoard） ---
             #writer.add_scalar('Training/Epsilon', eps_threshold, total_steps)
-            swanlab.log({'train/Epsilon':eps_threshold},step=total_steps)
+            if SWANLAB_FLAG:
+                swanlab.log({'train/Epsilon':eps_threshold},step=total_steps)
 
             # --- 检查回合结束 ---
             if done:
@@ -238,7 +243,7 @@ def train():
                 episode_losses.append(avg_episode_loss)
 
                 # 可视化新增：每回合记录得分和平均损失（TensorBoard）
-                if episode_count % LOG_INTERVAL == 0:
+                if episode_count % LOG_INTERVAL == 0 and SWANLAB_FLAG:
                 # 记录每回合得分（每回合调用一次，可不设置 steps，X 轴自动为回合数）
                     swanlab.log({"train/Episode_Reward":current_episode_reward}, step=episode_count)
                     # 记录每回合平均损失（同理，用 episode_count 作为 steps，与回合数对齐）
