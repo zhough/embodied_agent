@@ -26,11 +26,11 @@ EPS_DECAY = 100000
 LR = 4e-4  
 MEMORY_SIZE = 200000  # 经验回放池
 TARGET_UPDATE = 3500  # 通常按步数更新，而不是按回合
-NUM_STEPS = 200000  # 训练总步数
+NUM_STEPS = 300000  # 训练总步数
 FRAME_SIZE = 4
 PRINT_INTERVAL = 5  
 LOG_INTERVAL = 1  
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+DEVICE = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
 class DQN(nn.Module):
     def __init__(self,n_act):
         super().__init__()
