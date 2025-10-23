@@ -19,8 +19,8 @@ EPS_DECAY = 150000  # 探索率衰减不变，MinAtar学习更快
 LR = 3e-4  
 MEMORY_SIZE = 200000  # 经验池容量不变
 TARGET_UPDATE = 4000  # 目标网络更新频率不变
-NUM_STEPS = 100000  # 关键：MinAtar训练10万步足够出结果（原版40万）
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+NUM_STEPS = 200000  # 关键：MinAtar训练10万步足够出结果（原版40万）
+DEVICE = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
 PRINT_INTERVAL = 5  
 LOG_INTERVAL = 1  
 
@@ -107,7 +107,7 @@ def train():
     )
 
     # --- 关键1：替换为MinAtar环境（10x10x3输入，3个有效动作）---
-    env = gym.make("minatar/Breakout-v0",render_mode="rgb_array")  # MinAtar-Breakout默认3动作：左/右/无操作
+    env = gym.make("minatar/Breakout-v0")  # MinAtar-Breakout默认3动作：左/右/无操作
     n_actions = env.action_space.n  # 自动获取动作数（固定为3）
     print(f"MinAtar环境动作数：{n_actions}（左/右/无操作）")
 
